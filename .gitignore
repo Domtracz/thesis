@@ -1,18 +1,5 @@
 # Ignore the virtual environment
 venv/
-
-# Ignore system files
-__pycache__/
-.DS_Store
-
-# Ignore Jupyter Notebook checkpoints (if you use Jupyter)
-.ipynb_checkpoints/
-
-# Ignore Python bytecode
-*.pyc
-*.pyo
-
 # Ignore other large folders or files if needed
-data/
-logs/
+images/
 
