@@ -1,6 +1,11 @@
 # Ignore the virtual environment
 venv/
-# Ignore other large folders or files if needed
+# Ignore the Dataset
 images/
+# Ignore .idea folder
+.idea/
+# Ignore .vscode folder
+.vscode/
+
 
 
