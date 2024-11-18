@@ -5,7 +5,7 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, LearningR
 from tensorflow.keras.models import load_model
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as snss
+import seaborn as sns
 import os
 
 # Paths to data
@@ -45,11 +45,16 @@ def scheduler(epoch, lr):
 
 # Defines the residual block
 def residual_block(x, filters):
+
     residual = x
+    # Apply a 1x1 convolution to the residual to match the number of channels of x
+    residual = layers.Conv2D(filters, (1, 1), padding='same')(residual)
+
     x = layers.Conv2D(filters, (3, 3), padding='same', activation='relu')(x)
     x = layers.BatchNormalization()(x)
     x = layers.Conv2D(filters, (3, 3), padding='same')(x)
     x = layers.BatchNormalization()(x)
+
     return layers.ReLU()(layers.add([x, residual]))
 
 # Model definition
@@ -70,7 +75,7 @@ def create_model():
     return models.Model(inputs=input_layer, outputs=output_layer)
 
 # Checks if model weights exist and load them
-model_path = "Models/best_model.h5"
+model_path = "Models/best_model.keras"
 if os.path.exists(model_path):
     model = load_model(model_path)  # Load the model if weights are saved
     print("Loaded saved model weights.")
@@ -118,7 +123,7 @@ print(f"Validation Accuracy: {accuracy * 100:.2f}%")
 # Confusion Matrix
 conf_matrix = tf.math.confusion_matrix(val_labels, val_preds)
 plt.figure(figsize=(8, 6))
-snss.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
 plt.xlabel("Predicted Label")
 plt.ylabel("True Label")
 plt.title("Confusion Matrix")
