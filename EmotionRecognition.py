@@ -41,7 +41,8 @@ val_generator = create_data_generator(val_dir, val_datagen, shuffle=False)
 
 # Learning rate scheduler function
 def scheduler(epoch, lr):
-    return lr * tf.math.exp(-0.1) if epoch >= 10 else lr
+    return float(lr * tf.math.exp(-0.05)) if epoch >= 10 else float(lr)
+
 
 # Defines the residual block
 def residual_block(x, filters):
