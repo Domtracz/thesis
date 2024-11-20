@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras import layers, models
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, LearningRateScheduler
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras.models import load_model
 import matplotlib.pyplot as plt
 import numpy as np
@@ -41,11 +41,6 @@ def create_data_generator(directory, datagen, batch_size=64, shuffle=True):
 # Creates train and validation generators
 train_generator = create_data_generator(train_dir, train_datagen)
 val_generator = create_data_generator(val_dir, val_datagen, shuffle=False)
-
-# Learning rate scheduler function
-def scheduler(epoch, lr):
-    return float(lr * tf.math.exp(-0.05)) if epoch >= 10 else float(lr)
-
 
 # Defines the residual block
 def residual_block(x, filters):
@@ -96,7 +91,7 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=2.5e-4),
 callbacks = [
     EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
     ModelCheckpoint(model_path, save_best_only=True, monitor="val_loss", mode="min"),
-    LearningRateScheduler(scheduler)
+    ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=0.00001),
 ]
 
 # Train the model
