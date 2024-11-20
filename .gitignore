@@ -6,6 +6,5 @@ images/
 .idea/
 # Ignore .vscode folder
 .vscode/
-
-
-
+# Ignore models folder
+Models/
