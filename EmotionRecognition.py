@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import os
+from sklearn.utils import class_weight
 
 # Paths to data
 train_dir = 'images/train'
@@ -87,6 +88,16 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=2.5e-4),
               loss='categorical_crossentropy',
               metrics=['accuracy'])
 
+train_labels = train_generator.classes  # Get the labels from the train generator
+
+class_weights = class_weight.compute_class_weight(
+    'balanced',  # Balanced class weights
+    classes=np.unique(train_labels),  # Classes from the generator
+    y=train_labels  # Class labels from the generator
+)
+
+class_weight_dict = dict(enumerate(class_weights))
+
 # Callbacks
 callbacks = [
     EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
@@ -99,7 +110,9 @@ history = model.fit(
     train_generator,
     validation_data=val_generator,
     epochs=30,
-    callbacks=callbacks
+    callbacks=callbacks,
+    class_weight=class_weight_dict,
+
 )
 
 # Plot training history
