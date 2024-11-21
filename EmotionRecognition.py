@@ -29,7 +29,7 @@ train_datagen = ImageDataGenerator(
 val_datagen = ImageDataGenerator(rescale=1./255)  # Only rescale for validation
 
 # Function to create a data generator
-def create_data_generator(directory, datagen, batch_size=64, shuffle=True):
+def create_data_generator(directory, datagen, batch_size=32, shuffle=True):
     return datagen.flow_from_directory(
         directory,
         target_size=(48, 48),
@@ -43,19 +43,45 @@ def create_data_generator(directory, datagen, batch_size=64, shuffle=True):
 train_generator = create_data_generator(train_dir, train_datagen)
 val_generator = create_data_generator(val_dir, val_datagen, shuffle=False)
 
+
+def se_block(input_tensor, reduction=16):
+    """Squeeze and excitation block for channel attenuation"""
+    filters = input_tensor.shape[-1] #Number of input Channels
+    se = layers.GlobalAveragePooling2D()(input_tensor)
+    se = layers.Dense(filters // reduction, activation='relu')(se)
+    se = layers.Dense(filters, activation='sigmoid')(se)
+    return layers.Multiply()([input_tensor, se])
+
+def cbam_block(input_tensor, reduction=16):
+    """Convolutional Block Attenuation Module with channel and spatial attenuation"""
+    #channel
+    channel = layers.GlobalAveragePooling2D()(input_tensor)
+    channel = layers.Dense(input_tensor.shape[-1] // reduction, activation='relu')(channel)
+    channel = layers.Dense(input_tensor.shape[-1], activation='sigmoid')(channel)
+    channel = layers.multiply([input_tensor, channel])
+
+    #spatial
+    spatial = layers.Conv2D(1,(3,3), padding='same', activation = 'sigmoid')(channel)
+    return layers.Multiply()([channel, spatial])
+
 # Defines the residual block
 def residual_block(x, filters):
 
     residual = x
-    # Apply a 1x1 convolution to the residual to match the number of channels of x
-    residual = layers.Conv2D(filters, (1, 1), padding='same')(residual)
 
     x = layers.Conv2D(filters, (3, 3), padding='same', activation='relu')(x)
     x = layers.BatchNormalization()(x)
     x = layers.Conv2D(filters, (3, 3), padding='same')(x)
     x = layers.BatchNormalization()(x)
 
-    return layers.ReLU()(layers.add([x, residual]))
+    x = se_block(x)
+    x = cbam_block(x)
+
+    # Apply a 1x1 convolution to the residual to match the number of channels of x
+    residual = layers.Conv2D(filters, (1, 1), padding='same')(residual)
+    x = layers.add([x, residual])
+
+    return layers.ReLU()(x)
 
 # Model definition
 def create_model():
@@ -103,7 +129,8 @@ history = model.fit(
     train_generator,
     validation_data=val_generator,
     epochs=30,
-    callbacks=callbacks
+    callbacks=callbacks,
+    verbose=1
 )
 
 # Plot training history
