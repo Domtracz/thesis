@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import os
-from sklearn.utils import class_weight
+
 
 # Paths to data
 train_dir = 'images/train'
@@ -76,12 +76,12 @@ def create_model():
 
 # Checks if model weights exist and load them
 model_path = "Models/best_model.keras"
-if os.path.exists(model_path):
-    model = load_model(model_path)  # Load the model if weights are saved
-    print("Loaded saved model weights.")
-else:
-    model = create_model()  # Create a new model if no saved weights exist
-    print("Created new model.")
+#if os.path.exists(model_path):
+    #model = load_model(model_path)  # Load the model if weights are saved
+    #print("Loaded saved model weights.")
+#else:
+model = create_model()  # Create a new model if no saved weights exist
+print("Created new model.")
 
 # Compiles the model
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=2.5e-4),
@@ -90,13 +90,6 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=2.5e-4),
 
 train_labels = train_generator.classes  # Get the labels from the train generator
 
-class_weights = class_weight.compute_class_weight(
-    'balanced',  # Balanced class weights
-    classes=np.unique(train_labels),  # Classes from the generator
-    y=train_labels  # Class labels from the generator
-)
-
-class_weight_dict = dict(enumerate(class_weights))
 
 # Callbacks
 callbacks = [
@@ -110,9 +103,7 @@ history = model.fit(
     train_generator,
     validation_data=val_generator,
     epochs=30,
-    callbacks=callbacks,
-    class_weight=class_weight_dict,
-
+    callbacks=callbacks
 )
 
 # Plot training history
