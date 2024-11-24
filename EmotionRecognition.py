@@ -90,7 +90,7 @@ def create_model():
     x = layers.BatchNormalization()(x)
     x = layers.MaxPooling2D((3, 3), strides=2, padding='same')(x)
 
-    for filters in [32, 64, 128, 256, 512]:
+    for filters in [64,128,256,512]:
         x = residual_block(x, filters)
 
     x = layers.GlobalAveragePooling2D()(x)
@@ -110,7 +110,7 @@ model = create_model()  # Create a new model if no saved weights exist
 print("Created new model.")
 
 # Compiles the model
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1.25e-4),
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=2.5e-4),
               loss='categorical_crossentropy',
               metrics=['accuracy'])
 
@@ -120,7 +120,7 @@ train_labels = train_generator.classes  # Get the labels from the train generato
 callbacks = [
     EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
     ModelCheckpoint(model_path, save_best_only=True, monitor="val_loss", mode="min"),
-    ReduceLROnPlateau(monitor='val_loss', factor=0.6, patience=3, min_lr=0.00001),
+    ReduceLROnPlateau(monitor='val_loss', factor=0.4, patience=3, min_lr=0.00001),
 ]
 
 # Train the model
