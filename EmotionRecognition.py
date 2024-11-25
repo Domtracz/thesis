@@ -49,30 +49,22 @@ def se_block(input_tensor, reduction=16):
     se = layers.Dense(filters, activation='sigmoid')(se)
     return layers.Multiply()([input_tensor, se])
 
-def cbam_block(input_tensor, reduction=16):
-    """Convolutional Block Attenuation Module with channel and spatial attenuation"""
-    #channel
-    channel = layers.GlobalAveragePooling2D()(input_tensor)
-    channel = layers.Dense(input_tensor.shape[-1] // reduction, activation='relu')(channel)
-    channel = layers.Dense(input_tensor.shape[-1], activation='sigmoid')(channel)
-    channel = layers.multiply([input_tensor, channel])
-
-    #spatial
-    spatial = layers.Conv2D(1,(3,3), padding='same', activation = 'sigmoid')(channel)
-    return layers.Multiply()([channel, spatial])
 
 # Defines the residual block
 def residual_block(input_tensor, filters):
 
     residual = input_tensor
+    x = layers.BatchNormalization()(input_tensor)
+    x = layers.ReLU()(x)
+    x = layers.Conv2D(filters, (3, 3), padding='same', activation='relu')(x)
 
-    x = layers.Conv2D(filters, (3, 3), padding='same', activation='relu')(input_tensor)
     x = layers.BatchNormalization()(x)
+    x = layers.ReLU()(x)
     x = layers.Conv2D(filters, (3, 3), padding='same')(x)
-    x = layers.BatchNormalization()(x)
 
-    x = se_block(x)
-    x = cbam_block(x)
+
+    x = se_block(x, reduction=16)
+
 
     # Adjust the residual if necessary to match dimensions
     if input_tensor.shape[-1] != filters:
@@ -86,31 +78,26 @@ def residual_block(input_tensor, filters):
 def create_model():
     input_layer = layers.Input(shape=(48, 48, 1))
 
-    x = layers.Conv2D(64, (5, 5), padding='same', activation='relu')(input_layer)
+    x = layers.Conv2D(128, (3, 3), strides = 2, padding='same', activation='relu')(input_layer)
     x = layers.BatchNormalization()(x)
-    x = layers.MaxPooling2D((3, 3), strides=2, padding='same')(x)
+    x = layers.Dropout(0.2)(x)
 
-    for filters in [64,128,256,512]:
+    for filters in [128,256,512]:
         x = residual_block(x, filters)
+        x = layers.Dropout(0.2)(x)
 
     x = layers.GlobalAveragePooling2D()(x)
-    x = layers.Dense(512, activation='relu')(x)
+    x = layers.Dense(512, activation='relu',kernel_regularizer = tf.keras.regularizers.l2(1e-4))(x)
     x = layers.Dropout(0.5)(x)
     output_layer = layers.Dense(7, activation='softmax')(x)
     return models.Model(inputs=input_layer, outputs=output_layer)
 
-
-# Checks if model weights exist and load them
 model_path = "Models/best_model.keras"
-#if os.path.exists(model_path):
-    #model = load_model(model_path)  # Load the model if weights are saved
-    #print("Loaded saved model weights.")
-#else:
 model = create_model()  # Create a new model if no saved weights exist
 print("Created new model.")
 
 # Compiles the model
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=2.5e-4),
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=3e-4),
               loss='categorical_crossentropy',
               metrics=['accuracy'])
 
@@ -120,7 +107,7 @@ train_labels = train_generator.classes  # Get the labels from the train generato
 callbacks = [
     EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
     ModelCheckpoint(model_path, save_best_only=True, monitor="val_loss", mode="min"),
-    ReduceLROnPlateau(monitor='val_loss', factor=0.4, patience=3, min_lr=0.00001),
+    ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=0.00001),
 ]
 
 # Train the model
