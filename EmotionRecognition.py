@@ -5,12 +5,47 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLRO
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+import os
+import shutil
+import random
+from tabnanny import verbose
+import pickle
+import json
 
 # Paths to data
 train_dir = 'images/train'
 val_dir = 'images/test'
 class_names = ["Angry", "Disgust", "Fear", "Happy","Neutral", "Sad", "Surprise" ]
 
+def oversample_data(train_dir,target_samples,valid_image_extensions = ('.png', '.jpg', '.jpeg')):
+
+    for class_dir in os.listdir(train_dir):
+        class_path = os.path.join(train_dir,class_dir)
+
+        images = [img for img in os.listdir(class_path) if img.lower().endswith(valid_image_extensions)]
+
+        if not images:
+            if verbose:
+                print(f"Warning: No valid images found in class '{class_dir}'. Skipping oversampling.")
+            continue
+
+        n_samples = len(images)
+
+        if n_samples < target_samples:
+            if verbose:
+                print(f"Class '{class_dir}': Oversampling from {n_samples} to {target_samples}.")
+            for i in range(target_samples-n_samples):
+                try:
+                    image_to_copy = random.choice(images)
+                    src = os.path.join(class_path , image_to_copy)
+                    dst = os.path.join(class_path,f"{image_to_copy}_copy{i}.png")
+                    shutil.copyfile(src, dst)
+
+                except Exception as e:
+                    if verbose:
+                        print(f"Error copying file in class '{class_dir}': {e}")
+
+oversample_data(train_dir,5000)
 # Data Augmentation and Loading
 train_datagen = ImageDataGenerator(
     rescale=1./255,
@@ -97,7 +132,7 @@ model = create_model()  # Create a new model if no saved weights exist
 print("Created new model.")
 
 # Compiles the model
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=3e-4),
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
               loss='categorical_crossentropy',
               metrics=['accuracy'])
 
@@ -107,7 +142,7 @@ train_labels = train_generator.classes  # Get the labels from the train generato
 callbacks = [
     EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
     ModelCheckpoint(model_path, save_best_only=True, monitor="val_loss", mode="min"),
-    ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=0.00001),
+    ReduceLROnPlateau(monitor='val_loss', factor=0.3, patience=3, min_lr=0.00001),
 ]
 
 # Train the model
@@ -118,6 +153,21 @@ history = model.fit(
     callbacks=callbacks,
     verbose=1
 )
+#pickle and json files that store training history
+history_file = 'training_history.pkl'
+history_json_file = 'training_history.json'
+
+if os.path.exists(history_file):
+    with open(history_file, 'rb') as f:
+        all_histories = pickle.load(f)
+else:
+    all_histories = []
+
+all_histories.append(history.history)
+with open(history_file, 'wb') as f:
+    pickle.dump(all_histories, f)
+with open(history_json_file, 'w') as f:
+    json.dump(history.history, f, indent=4)
 
 # Plot training history
 plt.plot(history.history['accuracy'], label='Train Accuracy')
