@@ -116,11 +116,6 @@ def create_model(use_resnet = False):
         base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(48, 48, 3))
         base_model.trainable = False
         x = base_model(x,training=False)
-        x = layers.GlobalAveragePooling2D()(x)
-
-        x = layers.Dense(512, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(1e-4))(x)
-        x = layers.Dropout(0.3)(x)
-        output_layer = layers.Dense(7, activation='softmax')(x)
 
     else:
         x = layers.Conv2D(128, (3, 3), strides=2, padding='same', activation='relu')(input_layer)
@@ -133,12 +128,10 @@ def create_model(use_resnet = False):
             x = se_block(x, reduction=16)
             x = layers.Dropout(0.2)(x)
 
-        x = layers.GlobalAveragePooling2D()(x)
-        x = layers.Dense(512, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(1e-4))(x)
-        x = layers.Dropout(0.3)(x)
-
-        output_layer = layers.Dense(7, activation='softmax')(x)
-
+    x = layers.GlobalAveragePooling2D()(x)
+    x = layers.Dense(512, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(1e-4))(x)
+    x = layers.Dropout(0.3)(x)
+    output_layer = layers.Dense(7, activation='softmax')(x)
 
     return models.Model(inputs=input_layer, outputs=output_layer)
 
@@ -180,7 +173,7 @@ tuned_model = create_model(use_resnet = True)  # Create a new model if no saved 
 history_tuned = run_model(tuned_model, epochs=30, fine_tune= True)
 print("Created finetune model.")
 
-
+def save_history(history):
 #pickle and json files that store training history
 history_file = 'training_history.pkl'
 history_json_file = 'training_history.json'
@@ -192,6 +185,7 @@ else:
     all_histories = []
 
 all_histories.append({'baseline': history_my_model.history, 'fine_tuned': history_tuned.history})
+
 with open(history_file, 'wb') as f:
     pickle.dump(all_histories, f)
 with open(history_json_file, 'w') as f:
